@@ -1,2 +1,3 @@
-# Sales-Utility
-Sales Utility Mod
+Project of Sales Utility Mod for Automation/etc
+
+Created By Chxruu the Goat
