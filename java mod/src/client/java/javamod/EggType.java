@@ -4,30 +4,32 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 enum EggType {
-	DEFAULT("Default", 1, false),
-	DESERT("Desert", 2, false),
-	CACTUS("Cactus", 3, false),
-	ICE("Ice", 4, false),
-	HELL("Hell", 5, false),
-	HEAVENLY("Heavenly", 6, false),
-	BRAIN_ROT("Brain-Rot", 7, false),
-	DINO("Dino", 1, true),
-	PUMPKIN("Pumpkin", 2, true),
-	WITCH("Witch", 3, true),
-	ROBOT("Robot", 4, true),
-	VOID("Void", 5, true),
-	CORRUPT("Corrupt", 6, true),
-	DRAGON("Dragon", 7, true);
+	DEFAULT("Default", 1, 1),
+	DESERT("Desert", 2, 1),
+	CACTUS("Cactus", 3, 1),
+	ICE("Ice", 4, 1),
+	HELL("Hell", 5, 1),
+	HEAVENLY("Heavenly", 6, 1),
+	BRAIN_ROT("Brain-Rot", 7, 1),
+	DINO("Dino", 1, 2),
+	PUMPKIN("Pumpkin", 2, 2),
+	WITCH("Witch", 3, 2),
+	ROBOT("Robot", 4, 2),
+	VOID("Void", 5, 2),
+	CORRUPT("Corrupt", 6, 2),
+	DRAGON("Dragon", 7, 2),
+	ALIEN("Alien", 1, 3),
+	AI("AI", 2, 3);
 
 	final String displayName;
 	final int slot;
-	final boolean secondPage;
+	final int page;
 	final Pattern chatNameMatcher;
 
-	EggType(String displayName, int slot, boolean secondPage) {
+	EggType(String displayName, int slot, int page) {
 		this.displayName = displayName;
 		this.slot = slot;
-		this.secondPage = secondPage;
+		this.page = page;
 		this.chatNameMatcher = buildChatNameMatcher(displayName);
 	}
 

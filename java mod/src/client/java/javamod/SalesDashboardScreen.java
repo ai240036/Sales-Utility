@@ -85,8 +85,6 @@ final class SalesDashboardScreen extends Screen {
 		private ActionButtonWidget cancelRoutinesKeyButton;
 		private ActionButtonWidget allOnButton;
 		private ActionButtonWidget allOffButton;
-		private StyledTextFieldWidget museumClickDelayField;
-		private StyledTextFieldWidget museumPvField;
 		private StyledTextFieldWidget lobbyClickDelayField;
 
 		private DropdownWidget<TriggerActionMode> blackmarketModeDropdown;
@@ -128,18 +126,6 @@ final class SalesDashboardScreen extends Screen {
 		private ToggleSwitchWidget cookieRollButtonToggle;
 		private DropdownWidget<String> titleScreenImageDropdown;
 		private DropdownWidget<String> startMusicDropdown;
-
-		private DropdownWidget<SetupSwapMode> setupSwapModeDropdown;
-		private DropdownWidget<SetupSwapArmor> setupSwapArmorDropdown;
-		private ToggleSwitchWidget setupSwapBossRelicsToggle;
-		private StyledTextFieldWidget setupSwapStoreCommandField;
-		private StyledTextFieldWidget setupSwapGetCommandField;
-		private DropdownWidget<Integer> setupSwapRingCountDropdown;
-		private DropdownWidget<Integer> setupSwapAttachmentCountDropdown;
-		private DropdownWidget<Integer> setupSwapBossRelicCountDropdown;
-		private StyledTextFieldWidget setupSwapClickDelayField;
-		private StyledTextFieldWidget setupSwapAttachmentDelayField;
-		private ActionButtonWidget setupSwapRunButton;
 
 		private DropdownWidget<EggType> eggTypeDropdown;
 		private DropdownWidget<Integer> eggOpenAmountDropdown;
@@ -207,8 +193,6 @@ final class SalesDashboardScreen extends Screen {
 			this.cancelRoutinesKeyButton = null;
 			this.allOnButton = null;
 			this.allOffButton = null;
-			this.museumClickDelayField = null;
-			this.museumPvField = null;
 			this.lobbyClickDelayField = null;
 
 			this.blackmarketModeDropdown = null;
@@ -250,18 +234,6 @@ final class SalesDashboardScreen extends Screen {
 			this.cookieRollButtonToggle = null;
 			this.titleScreenImageDropdown = null;
 			this.startMusicDropdown = null;
-
-			this.setupSwapModeDropdown = null;
-			this.setupSwapArmorDropdown = null;
-			this.setupSwapBossRelicsToggle = null;
-			this.setupSwapStoreCommandField = null;
-			this.setupSwapGetCommandField = null;
-			this.setupSwapRingCountDropdown = null;
-			this.setupSwapAttachmentCountDropdown = null;
-			this.setupSwapBossRelicCountDropdown = null;
-			this.setupSwapClickDelayField = null;
-			this.setupSwapAttachmentDelayField = null;
-			this.setupSwapRunButton = null;
 
 			this.eggTypeDropdown = null;
 			this.eggOpenAmountDropdown = null;
@@ -383,12 +355,10 @@ final class SalesDashboardScreen extends Screen {
 				case TRAITS -> buildTraitsTab();
 				case COOKIES -> buildCookiesTab();
 				case MEDIA -> buildMediaTab();
-				case SETUP_SWAP -> buildSetupSwapTab();
 				case EGG -> buildEggTab();
 				case RING_SCRAPPER -> buildRingScrapperTab();
 				case WEBHOOK -> buildWebhookTab();
 				case BOSS -> buildBossTab();
-				case MUSEUM -> buildMuseumTab();
 				case BUFFS -> buildBuffsTab();
 				case STORE -> buildStoreTab();
 				case DAILIES -> buildDailiesTab();
@@ -700,27 +670,8 @@ final class SalesDashboardScreen extends Screen {
 				BOSS_NOTIFY_DELAY_MS = clampLong(parseLongNoValidation(this.bossNotifyDelayField.getText(), BOSS_NOTIFY_DELAY_MS), 0L, 86_400_000L);
 			}
 
-			if (this.museumPvField != null) {
-				MUSEUM_PV_NUMBER = clampInt(parseIntNoValidation(this.museumPvField.getText(), MUSEUM_PV_NUMBER), 1, 100);
-			}
-			if (this.museumClickDelayField != null) {
-				MUSEUM_CLICK_DELAY_MS = clampLong(parseLongNoValidation(this.museumClickDelayField.getText(), MUSEUM_CLICK_DELAY_MS), 20L, 10_000L);
-			}
 			if (this.lobbyClickDelayField != null) {
 				LOBBY_CLICK_DELAY_MS = clampLong(parseLongNoValidation(this.lobbyClickDelayField.getText(), LOBBY_CLICK_DELAY_MS), 20L, 10_000L);
-			}
-
-			if (this.setupSwapStoreCommandField != null) {
-				SETUP_SWAP_STORE_COMMAND = normalizeStoreCommand(parseTextNoValidation(this.setupSwapStoreCommandField.getText(), SETUP_SWAP_STORE_COMMAND));
-			}
-			if (this.setupSwapGetCommandField != null) {
-				SETUP_SWAP_GET_COMMAND = normalizeStoreCommand(parseTextNoValidation(this.setupSwapGetCommandField.getText(), SETUP_SWAP_GET_COMMAND));
-			}
-			if (this.setupSwapClickDelayField != null) {
-				SETUP_SWAP_CLICK_DELAY_MS = clampLong(parseLongNoValidation(this.setupSwapClickDelayField.getText(), SETUP_SWAP_CLICK_DELAY_MS), 20L, 10_000L);
-			}
-			if (this.setupSwapAttachmentDelayField != null) {
-				SETUP_SWAP_ATTACHMENT_DELAY_MS = clampLong(parseLongNoValidation(this.setupSwapAttachmentDelayField.getText(), SETUP_SWAP_ATTACHMENT_DELAY_MS), 0L, 10_000L);
 			}
 
 			if (this.gemshopTriggerField != null) {
@@ -962,8 +913,6 @@ final class SalesDashboardScreen extends Screen {
 				setAutomationMode(automationMode, automationMode == AutomationMode.EGG);
 				setAutomationActive(true);
 			} else {
-				FISHING_ENABLED.set(false);
-				MUSEUM_ENABLED.set(false);
 				EGG_ENABLED.set(false);
 				EGG_PENDING.set(false);
 				RING_SCRAPPER_ENABLED.set(false);
@@ -988,8 +937,7 @@ final class SalesDashboardScreen extends Screen {
 					mode -> {
 						applyTriggerActionMode(enabled, webhookOnly, mode);
 						savePersistedSettings();
-						sendClientFeedback(label + " set to " + mode.label + ".");
-					}
+				EGG_ENABLED.set(false);
 				);
 			}
 
@@ -1355,93 +1303,7 @@ final class SalesDashboardScreen extends Screen {
 			return Text.literal(fileName);
 		}
 
-		private void buildSetupSwapTab() {
-			int row = 0;
-			this.setupSwapModeDropdown = addDropdownRow(
-				row++,
-				"Mode",
-				List.of(SetupSwapMode.values()),
-				mode -> Text.literal(mode.label),
-				() -> SETUP_SWAP_MODE,
-				mode -> {
-					SETUP_SWAP_MODE = mode;
-					savePersistedSettings();
-				}
-			);
-			this.setupSwapStoreCommandField = addTextRow(row++, "Store PV", SETUP_SWAP_STORE_COMMAND, "pv 4 (or off)");
-			this.setupSwapGetCommandField = addTextRow(row++, "Get PV", SETUP_SWAP_GET_COMMAND, "pv 5");
-			this.setupSwapRingCountDropdown = addDropdownRow(
-				row++,
-				"Rings",
-				List.of(1, 2, 3, 4, 5),
-				value -> Text.literal(Integer.toString(value)),
-				() -> SETUP_SWAP_RING_COUNT,
-				value -> {
-					SETUP_SWAP_RING_COUNT = clampInt(value, 1, 5);
-					savePersistedSettings();
-				}
-			);
-			this.setupSwapAttachmentCountDropdown = addDropdownRow(
-				row++,
-				"Attachments",
-				List.of(1, 2, 3, 4, 5, 6),
-				value -> Text.literal(Integer.toString(value)),
-				() -> SETUP_SWAP_ATTACHMENT_COUNT,
-				value -> {
-					SETUP_SWAP_ATTACHMENT_COUNT = clampInt(value, 1, 6);
-					savePersistedSettings();
-				}
-			);
-			this.setupSwapBossRelicsToggle = addToggleRow(
-				row++,
-				"Boss Relics",
-				() -> SETUP_SWAP_BOSS_RELICS_ENABLED.get(),
-				value -> {
-					SETUP_SWAP_BOSS_RELICS_ENABLED.set(value);
-					savePersistedSettings();
-				}
-			);
-			this.setupSwapBossRelicCountDropdown = addDropdownRow(
-				row++,
-				"Boss Relic Amount",
-				List.of(1, 2, 3, 4, 5, 6),
-				value -> Text.literal(Integer.toString(value)),
-				() -> SETUP_SWAP_BOSS_RELIC_COUNT,
-				value -> {
-					SETUP_SWAP_BOSS_RELIC_COUNT = clampInt(value, 1, 6);
-					savePersistedSettings();
-				}
-			);
-			this.setupSwapClickDelayField = addNumberRow(row++, "Click Delay (ms)", SETUP_SWAP_CLICK_DELAY_MS);
-			this.setupSwapAttachmentDelayField = addNumberRow(row++, "Attachment Delay (ms)", SETUP_SWAP_ATTACHMENT_DELAY_MS);
-			this.setupSwapArmorDropdown = addDropdownRow(
-				row++,
-				"Armor",
-				List.of(SetupSwapArmor.values()),
-				armor -> Text.literal(armor.label),
-				() -> SETUP_SWAP_ARMOR,
-				armor -> {
-					SETUP_SWAP_ARMOR = armor;
-					savePersistedSettings();
-				}
-			);
-
-			this.setupSwapRunButton = addActionRow(
-				row++,
-				"Run",
-				Text.literal("Start Now"),
-				true,
-				() -> {
-					applyFields(false);
-					enqueueRoutine("setup-swap", SalesClientMod::runSetupSwapRoutine);
-					sendClientFeedback("Setup swap queued: " + SETUP_SWAP_MODE.label + ".");
-				}
-			);
-
-			String keyName = SETUP_SWAP_KEYBIND == null ? "K" : SETUP_SWAP_KEYBIND.getBoundKeyLocalizedText().getString();
-			this.infoLines.add(new InfoLine(Text.literal("Keybind: " + keyName), this.labelX, rowY(row) + 6));
-		}
-		private void buildEggTab() {
+	private void buildEggTab() {
 			int row = 0;
 			this.eggTypeDropdown = addDropdownRow(
 				row++,
@@ -1479,12 +1341,6 @@ final class SalesDashboardScreen extends Screen {
 				this.labelX,
 				rowY(row) + 6
 			));
-		}
-
-		private void buildMuseumTab() {
-			int row = 0;
-			this.museumPvField = addNumberRow(row++, "PV Number", MUSEUM_PV_NUMBER);
-			this.museumClickDelayField = addNumberRow(row++, "Click Delay (ms)", MUSEUM_CLICK_DELAY_MS);
 		}
 
 		private void buildBuffsTab() {
@@ -1663,10 +1519,8 @@ final class SalesDashboardScreen extends Screen {
 			TRAITS("Traits"),
 			COOKIES("Cookies"),
 			MEDIA("Media"),
-			SETUP_SWAP("Setup Swap"),
 			EGG("Egg"),
 			RING_SCRAPPER("Ring Scrapper"),
-			MUSEUM("Museum"),
 			BUFFS("Buffs"),
 			STORE("Store"),
 			WEBHOOK("Webhook"),

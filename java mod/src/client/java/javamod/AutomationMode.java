@@ -1,8 +1,6 @@
 package javamod;
 
 enum AutomationMode {
-	FISHING("Fishing"),
-	MUSEUM("Museum"),
 	EGG("Egg"),
 	RING_SCRAPPER("Ring Scrapper");
 
