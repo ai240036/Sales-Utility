@@ -122,6 +122,12 @@ public class SalesClientMod implements ClientModInitializer {
 	private static final String SALES_SERVER_NAME = "Sales Server";
 	private static final DateTimeFormatter AUTO_DAILY_TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 	private static final DateTimeFormatter AUTO_DAILY_TIMESTAMP_SECONDS_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	private static final Pattern FROM_CRYSTAL_TYPE_PATTERN = Pattern.compile(
+		"(?i)from\\s+crystal\\s*:?\\s*(common|rare|epic|legendary|mythic|gothic)"
+	);
+	private static final Pattern CRYSTAL_TYPE_LINE_PATTERN = Pattern.compile(
+		"(?im)^\\s*(common|rare|epic|legendary|mythic|gothic)\\b"
+	);
 	private static final Pattern BOOSTER_PERCENT_PATTERN = Pattern.compile(
 		"(?i)booster\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*%"
 	);
@@ -214,12 +220,16 @@ public class SalesClientMod implements ClientModInitializer {
 	private static final int CONTAINER_COLUMNS = 9;
 	private static final int PLAYER_INVENTORY_SLOTS = 36;
 	private static final int COMMAND_SUCCESS = Command.SINGLE_SUCCESS;
+	private static final int FISHING_HOTBAR_SLOT = 1;
+	private static final int MUSEUM_HOTBAR_SLOT = 0;
+	private static final int[] MUSEUM_BOX_HOTBAR_PREFERRED_SLOTS = {3, 4, 5, 6};
 	private static final int EGG_HOTBAR_SLOT = 3;
 	private static final int EGG_NEXT_PAGE_SLOT = 8;
 	private static final int EGG_LAST_SLOT = 53;
 	private static final int EGG_FINAL_SLOT = 50;
 	private static final int LOBBY_FAILSAFE_TARGET_SLOT = 13;
 	private static final int TINKER_ENTRY_SLOT = 49;
+	private static final int TINKER_OPEN_MUSEUM_SLOT = 33;
 	private static final int TINKER_BACK_SLOT = 32;
 	private static final int TINKER_OPEN_STORAGE_SLOT = 29;
 	private static final int TINKER_CONFIRM_STORAGE_SLOT = 49;
@@ -240,6 +250,7 @@ public class SalesClientMod implements ClientModInitializer {
 	private static final int DEFAULT_BLACKMARKET_CLICK_COUNT = 10;
 	private static final long DEFAULT_MERCHANT_CLICK_DELAY_MS = 200L;
 	private static final long DEFAULT_BUFFS_CLICK_DELAY_MS = 200L;
+	private static final long DEFAULT_MUSEUM_CLICK_DELAY_MS = 550L;
 	private static final long DEFAULT_LOBBY_CLICK_DELAY_MS = 200L;
 	private static final long DEFAULT_AUTO_STORE_DELAY_MS = 700L;
 	private static final long DEFAULT_BOSS_NOTIFY_DELAY_MS = 5L * 60L * 1000L;
@@ -267,8 +278,17 @@ public class SalesClientMod implements ClientModInitializer {
 	private static final String DEFAULT_TITLESCREEN_IMAGE_FILE = "";
 	private static final String DEFAULT_START_MUSIC_FILE = "";
 	private static final long DEFAULT_RING_SCRAPPER_CLICK_DELAY_MS = 250L;
+	private static final long DEFAULT_FISHING_FAILSAFE_MS = 20_000L;
+	private static final long FISHING_RECAST_DELAY_MS = 300L;
 	private static final long PERKS_CLICK_DELAY_MS = 300L;
 	private static final long DEFAULT_LOBBY_FAILSAFE_REPEAT_MS = 10_000L;
+	private static final int DEFAULT_MUSEUM_PV_NUMBER = 1;
+	private static final String DEFAULT_MUSEUM_VAULT_COMMAND = "pv";
+	private static final int DEFAULT_MUSEUM_BOX_OPEN_COUNT = 30;
+	private static final long DEFAULT_MUSEUM_BOX_DELAY_MS = 260L;
+	private static final long DEFAULT_MUSEUM_RETRY_DELAY_MS = 1000L;
+	private static final long DEFAULT_MUSEUM_REOPEN_PHASE_DELAY_MS = 1200L;
+	private static final int MUSEUM_PHASE2_OPEN_ATTEMPTS = 3;
 	private static final int DEFAULT_COMMON_MIN_BOOSTER = 20;
 	private static final int DEFAULT_RARE_MIN_BOOSTER = 28;
 	private static final int DEFAULT_EPIC_MIN_BOOSTER = 40;
@@ -284,6 +304,7 @@ public class SalesClientMod implements ClientModInitializer {
 	static volatile int BLACKMARKET_CLICK_COUNT = DEFAULT_BLACKMARKET_CLICK_COUNT;
 	static volatile long MERCHANT_CLICK_DELAY_MS = DEFAULT_MERCHANT_CLICK_DELAY_MS;
 	static volatile long BUFFS_CLICK_DELAY_MS = DEFAULT_BUFFS_CLICK_DELAY_MS;
+	static volatile long MUSEUM_CLICK_DELAY_MS = DEFAULT_MUSEUM_CLICK_DELAY_MS;
 	static volatile long LOBBY_CLICK_DELAY_MS = DEFAULT_LOBBY_CLICK_DELAY_MS;
 	static volatile long AUTO_STORE_DELAY_MS = DEFAULT_AUTO_STORE_DELAY_MS;
 	static volatile long BOSS_NOTIFY_DELAY_MS = DEFAULT_BOSS_NOTIFY_DELAY_MS;
@@ -318,6 +339,7 @@ public class SalesClientMod implements ClientModInitializer {
 	private static final long BACKGROUND_IDLE_LOOP_DELAY_MS = 450L;
 	private static final long LOBBY_SCAN_INTERVAL_ACTIVE_MS = 200L;
 	private static final long LOBBY_SCAN_INTERVAL_IDLE_MS = 700L;
+	static volatile long FISHING_FAILSAFE_MS = DEFAULT_FISHING_FAILSAFE_MS;
 	private static final long DEFAULT_EGG_POST_OPEN_DELAY_MS = 450L;
 	private static final long DEFAULT_EGG_CLICK_DELAY_MS = 550L;
 	private static final int DEFAULT_EGG_AUTO_OPEN_AMOUNT = 1;
@@ -350,6 +372,13 @@ public class SalesClientMod implements ClientModInitializer {
 	private static final long LOBBY_FAILSAFE_GUI_TIMEOUT_MS = 5000L;
 	private static final int LOBBY_COMPASS_OPEN_ATTEMPTS = 3;
 	private static final int EGG_OPEN_ATTEMPTS = 3;
+	static volatile int MUSEUM_PV_NUMBER = DEFAULT_MUSEUM_PV_NUMBER;
+	static volatile String MUSEUM_VAULT_COMMAND = DEFAULT_MUSEUM_VAULT_COMMAND;
+	static volatile int MUSEUM_BOX_OPEN_COUNT = DEFAULT_MUSEUM_BOX_OPEN_COUNT;
+	static volatile long MUSEUM_BOX_DELAY_MS = DEFAULT_MUSEUM_BOX_DELAY_MS;
+	static volatile long MUSEUM_RETRY_DELAY_MS = DEFAULT_MUSEUM_RETRY_DELAY_MS;
+	static volatile long MUSEUM_REOPEN_PHASE_DELAY_MS = DEFAULT_MUSEUM_REOPEN_PHASE_DELAY_MS;
+
 	private static final int[] GEMSHOP_ROW2_SLOTS = {12, 13, 14, 15, 16};
 	private static final int[] GEMSHOP_ROW4_SLOTS = {30, 31, 32, 33};
 
@@ -364,6 +393,7 @@ public class SalesClientMod implements ClientModInitializer {
 	private static final int MERCHANT_SPECIAL_VERIFY_ATTEMPTS = 8;
 	private static final long MERCHANT_SPECIAL_VERIFY_DELAY_MS = 250L;
 	private static final long MERCHANT_REOPEN_AFTER_STASH_DELAY_MS = 5000L;
+	private static final int CRYSTAL_PARSE_CACHE_LIMIT = 1024;
 
 	static final AtomicBoolean WEBHOOK_ENABLED = new AtomicBoolean(false);
 	// Prevent players from spoofing server restock/boss triggers by typing the trigger phrases in chat.
@@ -393,7 +423,9 @@ public class SalesClientMod implements ClientModInitializer {
 	static final AtomicBoolean AUTO_DAILY_PERKS_ENABLED = new AtomicBoolean(true);
 	static final AtomicBoolean AUTO_DAILY_FREECREDITS_ENABLED = new AtomicBoolean(true);
 	static final AtomicBoolean AUTO_DAILY_KEYALL_ENABLED = new AtomicBoolean(true);
+	static final AtomicBoolean FISHING_ENABLED = new AtomicBoolean(false);
 	static final AtomicBoolean EGG_ENABLED = new AtomicBoolean(false);
+	static final AtomicBoolean MUSEUM_ENABLED = new AtomicBoolean(false);
 	static final AtomicBoolean RING_SCRAPPER_ENABLED = new AtomicBoolean(false);
 	static final AtomicBoolean EGG_PENDING = new AtomicBoolean(false);
 	static final AtomicBoolean RING_SCRAPPER_PENDING = new AtomicBoolean(false);
@@ -412,7 +444,7 @@ public class SalesClientMod implements ClientModInitializer {
 	private static final AtomicLong SALES_SILENT_LAST_SUPPRESSED_AT_MS = new AtomicLong(0L);
 	private static final AtomicInteger SALES_SILENT_LAST_CONTAINER_ID = new AtomicInteger(-1);
 	static volatile EggType selectedEggType = EggType.DEFAULT;
-	static volatile AutomationMode automationMode = AutomationMode.EGG;
+	static volatile AutomationMode automationMode = AutomationMode.FISHING;
 	private static final AtomicLong LAST_EGG_CHAT_MATCH_MS = new AtomicLong(0L);
 	private static volatile EggType LAST_EGG_CHAT_MATCH_TYPE = null;
 	static volatile String AUTO_DAILY_PERKS_LAST_RUN = "";
@@ -427,7 +459,12 @@ public class SalesClientMod implements ClientModInitializer {
 	static final AtomicBoolean AUTO_DAILY_KEYALL_SCHEDULED = new AtomicBoolean(false);
 	static KeyBinding START_AUTOMATION_KEYBIND;
 	static KeyBinding OPEN_GUI_KEYBIND;
+	static KeyBinding SETUP_SWAP_KEYBIND;
 	static KeyBinding CANCEL_ALL_ROUTINES_KEYBIND;
+
+	private static final String SETUP_SWAP_ROUTINE_NAME = "setup-swap";
+	private static final AtomicBoolean SETUP_SWAP_CANCEL_REQUESTED = new AtomicBoolean(false);
+	private static final AtomicReference<Thread> SETUP_SWAP_ROUTINE_THREAD = new AtomicReference<>(null);
 	private static final AtomicReference<Thread> EVENT_ROUTINE_THREAD = new AtomicReference<>(null);
 
 	private static final AtomicBoolean EVENT_ROUTINE_RUNNING = new AtomicBoolean(false);
@@ -446,7 +483,6 @@ public class SalesClientMod implements ClientModInitializer {
 		}
 	);
 
-			// Fishing and museum automation removed
 	private static final ThreadPoolExecutor BACKGROUND_EXECUTOR = new ThreadPoolExecutor(
 		4,
 		4,
@@ -489,9 +525,11 @@ public class SalesClientMod implements ClientModInitializer {
 	private static volatile long lastLobbyJoinSalesAttemptMs = 0L;
 	private static final AtomicBoolean HAS_CONNECTED_TO_MULTIPLAYER = new AtomicBoolean(false);
 	private static final AtomicBoolean STARTUP_AUTO_CONNECT_ATTEMPTED = new AtomicBoolean(false);
+	private static final Map<String, CrystalParseResult> CRYSTAL_PARSE_CACHE = new ConcurrentHashMap<>();
 
 	// Client-state cache: avoids frequent callOnClientThread() for simple reads, reducing allocations and main-thread queueing.
 	private static final AtomicInteger CACHED_COMPASS_HOTBAR_SLOT = new AtomicInteger(-1);
+	private static final AtomicBoolean CACHED_HAS_FISHING_BOBBER = new AtomicBoolean(false);
 	private static final AtomicBoolean CACHED_IS_CONNECTED_TO_SERVER = new AtomicBoolean(false);
 	private static final AtomicBoolean CACHED_IS_HANDLED_SCREEN = new AtomicBoolean(false);
 	private static final AtomicInteger CACHED_OPEN_CONTAINER_ROWS = new AtomicInteger(-1);
@@ -544,6 +582,14 @@ public class SalesClientMod implements ClientModInitializer {
 				SALES_KEYBIND_CATEGORY
 			)
 		);
+		SETUP_SWAP_KEYBIND = KeyBindingHelper.registerKeyBinding(
+			new KeyBinding(
+				"key.javamod.setup_swap",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_K,
+				SALES_KEYBIND_CATEGORY
+			)
+		);
 		CANCEL_ALL_ROUTINES_KEYBIND = KeyBindingHelper.registerKeyBinding(
 			new KeyBinding(
 				"key.javamod.cancel_all_routines",
@@ -563,6 +609,9 @@ public class SalesClientMod implements ClientModInitializer {
 			}
 			while (OPEN_GUI_KEYBIND.wasPressed()) {
 				openConfigGuiFromKeybind(client);
+			}
+			while (SETUP_SWAP_KEYBIND.wasPressed()) {
+				startSetupSwapFromKeybind();
 			}
 			while (CANCEL_ALL_ROUTINES_KEYBIND.wasPressed()) {
 				cancelAllRoutinesNow();
@@ -634,6 +683,7 @@ public class SalesClientMod implements ClientModInitializer {
 
 	private static void updateClientStateCache(MinecraftClient client) {
 		int compassSlot = -1;
+		boolean hasBobber = false;
 		ClientPlayNetworkHandler networkHandler = null;
 		if (client != null && client.player != null) {
 			for (int slot = 0; slot < 9; slot++) {
@@ -642,9 +692,11 @@ public class SalesClientMod implements ClientModInitializer {
 					break;
 				}
 			}
+			hasBobber = client.player.fishHook != null;
 			networkHandler = client.getNetworkHandler();
 		}
 		CACHED_COMPASS_HOTBAR_SLOT.set(compassSlot);
+		CACHED_HAS_FISHING_BOBBER.set(hasBobber);
 
 		boolean connected = client != null
 			&& client.player != null
@@ -1023,6 +1075,30 @@ public class SalesClientMod implements ClientModInitializer {
 				.executes(context -> showGemshopStoreCommand(context.getSource()))
 				.then(ClientCommandManager.argument("command", StringArgumentType.greedyString()).executes(context ->
 					setGemshopStoreCommand(context.getSource(), StringArgumentType.getString(context, "command")))));
+	}
+
+	private static LiteralArgumentBuilder<FabricClientCommandSource> buildFishingCommandLiteral(String literal) {
+		return ClientCommandManager.literal(literal)
+			.executes(context -> setFishingToggle(context.getSource(), true))
+			.then(ClientCommandManager.literal("on").executes(context ->
+				setFishingToggle(context.getSource(), true)))
+			.then(ClientCommandManager.literal("off").executes(context ->
+				setFishingToggle(context.getSource(), false)));
+	}
+
+	private static LiteralArgumentBuilder<FabricClientCommandSource> buildMuseumCommandLiteral(String literal) {
+		return ClientCommandManager.literal(literal)
+			.executes(context -> setMuseumToggle(context.getSource(), true))
+			.then(ClientCommandManager.literal("on").executes(context ->
+				setMuseumToggle(context.getSource(), true)))
+			.then(ClientCommandManager.literal("off").executes(context ->
+				setMuseumToggle(context.getSource(), false)))
+			.then(ClientCommandManager.literal("pv")
+				.then(ClientCommandManager.argument("number", IntegerArgumentType.integer(1)).executes(context ->
+					setMuseumPvNumber(context.getSource(), IntegerArgumentType.getInteger(context, "number")))))
+			.then(ClientCommandManager.literal("vault")
+				.then(ClientCommandManager.argument("command", StringArgumentType.word()).executes(context ->
+					setMuseumVaultCommand(context.getSource(), StringArgumentType.getString(context, "command")))));
 	}
 
 	private static LiteralArgumentBuilder<FabricClientCommandSource> buildBlackmarketBuyCommandLiteral(String literal) {
@@ -1432,6 +1508,9 @@ public class SalesClientMod implements ClientModInitializer {
 				+ " startupConnect=" + onOff(AUTO_CONNECT_ON_STARTUP_ENABLED.get())
 				+ " lobbyReconnect=" + onOff(LOBBY_RECONNECT_ENABLED.get())
 				+ " autoDaily=" + onOff(AUTO_DAILY_ENABLED.get())
+				+ " fishing=" + onOff(FISHING_ENABLED.get())
+				+ " museum=" + onOff(MUSEUM_ENABLED.get())
+				+ " museumPv=" + MUSEUM_PV_NUMBER
 				+ " egg=" + onOff(EGG_ENABLED.get())
 				+ " ringScrapper=" + onOff(RING_SCRAPPER_ENABLED.get())
 				+ " cookieTarget=" + COOKIE_ROLL_TARGET.label
@@ -1796,6 +1875,55 @@ public class SalesClientMod implements ClientModInitializer {
 		return COMMAND_SUCCESS;
 	}
 
+	private static int setFishingToggle(FabricClientCommandSource source, boolean enabled) {
+		if (enabled) {
+			setAutomationMode(AutomationMode.FISHING, false);
+			selectHotbarSlot(FISHING_HOTBAR_SLOT);
+			setAutomationActive(true);
+			sendSourceFeedback(source, "Fishing automation is now on.");
+		} else {
+			FISHING_ENABLED.set(false);
+			sendSourceFeedback(source, "Fishing automation is now off.");
+		}
+		savePersistedSettings();
+		return COMMAND_SUCCESS;
+	}
+
+	private static int setMuseumToggle(FabricClientCommandSource source, boolean enabled) {
+		if (enabled) {
+			setAutomationMode(AutomationMode.MUSEUM, false);
+			setAutomationActive(true);
+			sendSourceFeedback(source, "Museum automation is now on.");
+		} else {
+			MUSEUM_ENABLED.set(false);
+			if (automationMode == AutomationMode.MUSEUM) {
+				setAutomationActive(false);
+			}
+			sendSourceFeedback(source, "Museum automation is now off.");
+		}
+		savePersistedSettings();
+		return COMMAND_SUCCESS;
+	}
+
+	private static int setMuseumPvNumber(FabricClientCommandSource source, int pvNumber) {
+		MUSEUM_PV_NUMBER = Math.max(1, pvNumber);
+		savePersistedSettings();
+		sendSourceFeedback(source, "Museum PV set to " + MUSEUM_PV_NUMBER + ".");
+		return COMMAND_SUCCESS;
+	}
+
+	private static int setMuseumVaultCommand(FabricClientCommandSource source, String rawCommand) {
+		String command = rawCommand == null ? "" : rawCommand.trim().toLowerCase(Locale.ROOT);
+		if (command.isEmpty()) {
+			sendSourceFeedback(source, "Museum vault command cannot be empty.");
+			return COMMAND_SUCCESS;
+		}
+		MUSEUM_VAULT_COMMAND = command;
+		savePersistedSettings();
+		sendSourceFeedback(source, "Museum vault command set to /" + MUSEUM_VAULT_COMMAND + " <number>.");
+		return COMMAND_SUCCESS;
+	}
+
 	private static int startEggAutomation(FabricClientCommandSource source, String rawEggType) {
 		EggType parsed = parseEggType(rawEggType);
 		if (parsed == null) {
@@ -1856,6 +1984,8 @@ public class SalesClientMod implements ClientModInitializer {
 			setAutomationMode(automationMode, automationMode == AutomationMode.EGG);
 			setAutomationActive(true);
 		} else {
+			FISHING_ENABLED.set(false);
+			MUSEUM_ENABLED.set(false);
 			EGG_ENABLED.set(false);
 			EGG_PENDING.set(false);
 			RING_SCRAPPER_ENABLED.set(false);
@@ -1882,6 +2012,13 @@ public class SalesClientMod implements ClientModInitializer {
 			return;
 		}
 
+		if (automationMode == AutomationMode.MUSEUM) {
+			setAutomationMode(AutomationMode.MUSEUM, false);
+			setAutomationActive(true);
+			savePersistedSettings();
+			sendClientFeedback("Automation running: Museum / Tinker.");
+			return;
+		}
 		if (automationMode == AutomationMode.RING_SCRAPPER) {
 			setAutomationMode(AutomationMode.RING_SCRAPPER, false);
 			setAutomationActive(true);
@@ -1890,25 +2027,81 @@ public class SalesClientMod implements ClientModInitializer {
 			return;
 		}
 
-		// Fallback to egg automation if mode is not explicitly recognized.
-		setAutomationMode(AutomationMode.EGG, true);
+		setAutomationMode(AutomationMode.FISHING, false);
+		selectHotbarSlot(FISHING_HOTBAR_SLOT);
 		setAutomationActive(true);
 		savePersistedSettings();
-		sendClientFeedback("Automation running: Egg (" + selectedEggType.displayName + ").");
+		sendClientFeedback("Automation running: Fishing.");
 	}
 
-	// Setup swap automation removed
+	private static void startSetupSwapFromKeybind() {
+		if (ROUTINE_PENDING_NAMES.contains(SETUP_SWAP_ROUTINE_NAME)) {
+			requestSetupSwapCancel();
+			return;
+		}
+		MinecraftClient client = MinecraftClient.getInstance();
+		if (client == null || client.player == null || client.getNetworkHandler() == null) {
+			sendClientFeedback("Setup swap: not in-game.");
+			return;
+		}
+		if (!isConnectedToSalesServer(client)) {
+			sendClientFeedback("Setup swap: not on " + String.join(" / ", SALES_SERVER_HOST_ALIASES) + ".");
+			return;
+		}
+		if (hasCompassInHotbar()) {
+			sendClientFeedback("Setup swap: in lobby (compass) -> abort.");
+			return;
+		}
+
+		SetupSwapMode mode = SETUP_SWAP_MODE;
+		SETUP_SWAP_CANCEL_REQUESTED.set(false);
+		enqueueRoutine(SETUP_SWAP_ROUTINE_NAME, SalesClientMod::runSetupSwapRoutine);
+		sendClientFeedback("Setup swap queued: " + mode.label + ".");
+	}
+
+	private static void requestSetupSwapCancel() {
+		boolean first = SETUP_SWAP_CANCEL_REQUESTED.compareAndSet(false, true);
+		Thread routineThread = SETUP_SWAP_ROUTINE_THREAD.get();
+		if (first) {
+			sendClientFeedback(routineThread == null ? "Setup swap: cancel requested (queued)." : "Setup swap: cancel requested.");
+		}
+		if (routineThread != null) {
+			routineThread.interrupt();
+		}
+		closeCurrentHandledScreen();
+	}
 
 	static void setAutomationMode(AutomationMode mode, boolean queueEggRun) {
 		automationMode = mode;
 		switch (mode) {
+			case FISHING -> {
+				FISHING_ENABLED.set(true);
+				MUSEUM_ENABLED.set(false);
+				EGG_ENABLED.set(false);
+				EGG_PENDING.set(false);
+				RING_SCRAPPER_ENABLED.set(false);
+				RING_SCRAPPER_PENDING.set(false);
+				selectHotbarSlot(FISHING_HOTBAR_SLOT);
+			}
+			case MUSEUM -> {
+				FISHING_ENABLED.set(false);
+				MUSEUM_ENABLED.set(true);
+				EGG_ENABLED.set(false);
+				EGG_PENDING.set(false);
+				RING_SCRAPPER_ENABLED.set(false);
+				RING_SCRAPPER_PENDING.set(false);
+			}
 			case EGG -> {
+				FISHING_ENABLED.set(false);
+				MUSEUM_ENABLED.set(false);
 				EGG_ENABLED.set(true);
 				EGG_PENDING.set(queueEggRun);
 				RING_SCRAPPER_ENABLED.set(false);
 				RING_SCRAPPER_PENDING.set(false);
 			}
 			case RING_SCRAPPER -> {
+				FISHING_ENABLED.set(false);
+				MUSEUM_ENABLED.set(false);
 				EGG_ENABLED.set(false);
 				EGG_PENDING.set(false);
 				RING_SCRAPPER_ENABLED.set(true);
@@ -1936,15 +2129,29 @@ public class SalesClientMod implements ClientModInitializer {
 	}
 
 	private static void normalizeAutomationState() {
+		boolean fishing = FISHING_ENABLED.get();
+		boolean museum = MUSEUM_ENABLED.get();
 		boolean egg = EGG_ENABLED.get();
 		boolean ringScrapper = RING_SCRAPPER_ENABLED.get();
-		int enabledModes = (egg ? 1 : 0) + (ringScrapper ? 1 : 0);
+		int enabledModes = (fishing ? 1 : 0) + (museum ? 1 : 0) + (egg ? 1 : 0) + (ringScrapper ? 1 : 0);
 
 		if (enabledModes > 1) {
 			if (automationMode == AutomationMode.EGG) {
+				fishing = false;
+				museum = false;
 				ringScrapper = false;
-			} else {
+			} else if (automationMode == AutomationMode.MUSEUM) {
+				fishing = false;
 				egg = false;
+				ringScrapper = false;
+			} else if (automationMode == AutomationMode.RING_SCRAPPER) {
+				fishing = false;
+				museum = false;
+				egg = false;
+			} else {
+				museum = false;
+				egg = false;
+				ringScrapper = false;
 			}
 		}
 
@@ -1955,6 +2162,8 @@ public class SalesClientMod implements ClientModInitializer {
 			RING_SCRAPPER_PENDING.set(false);
 		}
 
+		FISHING_ENABLED.set(fishing);
+		MUSEUM_ENABLED.set(museum);
 		EGG_ENABLED.set(egg);
 		RING_SCRAPPER_ENABLED.set(ringScrapper);
 
@@ -1962,8 +2171,10 @@ public class SalesClientMod implements ClientModInitializer {
 			automationMode = AutomationMode.EGG;
 		} else if (ringScrapper) {
 			automationMode = AutomationMode.RING_SCRAPPER;
-		} else {
-			automationMode = AutomationMode.EGG;
+		} else if (museum) {
+			automationMode = AutomationMode.MUSEUM;
+		} else if (fishing) {
+			automationMode = AutomationMode.FISHING;
 		}
 		AUTOMATION_ACTIVE.set(false);
 		LOBBY_FAILSAFE_ACTIVE.set(false);
@@ -2303,6 +2514,8 @@ public class SalesClientMod implements ClientModInitializer {
 		BLACKMARKET_CLICK_COUNT = readIntSetting(properties, "blackmarket.click_count", DEFAULT_BLACKMARKET_CLICK_COUNT, 1, 50);
 		MERCHANT_CLICK_DELAY_MS = readLongSetting(properties, "merchant.click_delay", legacyClickDelayMs, 20, 10_000);
 		BUFFS_CLICK_DELAY_MS = readLongSetting(properties, "buffs.click_delay", legacyClickDelayMs, 20, 10_000);
+		long legacyMuseumPullDelayMs = readLongSetting(properties, "museum.box_pull_delay", legacyClickDelayMs, 20, 10_000);
+		MUSEUM_CLICK_DELAY_MS = readLongSetting(properties, "museum.click_delay", legacyMuseumPullDelayMs, 20, 10_000);
 		LOBBY_CLICK_DELAY_MS = readLongSetting(properties, "lobby.click_delay", legacyClickDelayMs, 20, 10_000);
 		AUTO_STORE_DELAY_MS = readLongSetting(properties, "auto_store.delay", DEFAULT_AUTO_STORE_DELAY_MS, 0, 30_000);
 		BOSS_NOTIFY_DELAY_MS = readLongSetting(properties, "boss.notify_delay", DEFAULT_BOSS_NOTIFY_DELAY_MS, 0, 86_400_000);
@@ -2340,7 +2553,17 @@ public class SalesClientMod implements ClientModInitializer {
 			20,
 			10_000
 		);
+		FISHING_FAILSAFE_MS = readLongSetting(properties, "delay.fishing_failsafe", DEFAULT_FISHING_FAILSAFE_MS, 1000, 120_000);
 		LOBBY_FAILSAFE_REPEAT_MS = readLongSetting(properties, "delay.lobby_repeat", DEFAULT_LOBBY_FAILSAFE_REPEAT_MS, 1000, 120_000);
+		MUSEUM_BOX_DELAY_MS = readLongSetting(properties, "museum.box_delay", DEFAULT_MUSEUM_BOX_DELAY_MS, 20, 10_000);
+		MUSEUM_RETRY_DELAY_MS = readLongSetting(properties, "museum.retry_delay", DEFAULT_MUSEUM_RETRY_DELAY_MS, 100, 60_000);
+		MUSEUM_REOPEN_PHASE_DELAY_MS = readLongSetting(properties, "museum.reopen_phase_delay", DEFAULT_MUSEUM_REOPEN_PHASE_DELAY_MS, 100, 10_000);
+		MUSEUM_BOX_OPEN_COUNT = readIntSetting(properties, "museum.box_open_count", DEFAULT_MUSEUM_BOX_OPEN_COUNT, 1, 64);
+		MUSEUM_PV_NUMBER = readIntSetting(properties, "museum.pv_number", DEFAULT_MUSEUM_PV_NUMBER, 1, 100);
+		MUSEUM_VAULT_COMMAND = readStringSetting(properties, "museum.vault_command", DEFAULT_MUSEUM_VAULT_COMMAND);
+		if (MUSEUM_VAULT_COMMAND.isBlank()) {
+			MUSEUM_VAULT_COMMAND = DEFAULT_MUSEUM_VAULT_COMMAND;
+		}
 
 		WEBHOOK_ENABLED.set(readBooleanSetting(properties, "toggle.webhook", WEBHOOK_ENABLED.get()));
 		TriggerActionMode gemshopMode = readTriggerModeSetting(
@@ -2425,6 +2648,8 @@ public class SalesClientMod implements ClientModInitializer {
 				Long.MAX_VALUE
 			));
 		}
+		FISHING_ENABLED.set(readBooleanSetting(properties, "toggle.fishing", FISHING_ENABLED.get()));
+		MUSEUM_ENABLED.set(readBooleanSetting(properties, "toggle.museum", MUSEUM_ENABLED.get()));
 		EGG_ENABLED.set(readBooleanSetting(properties, "toggle.egg", EGG_ENABLED.get()));
 		RING_SCRAPPER_ENABLED.set(readBooleanSetting(properties, "toggle.ring_scrapper", RING_SCRAPPER_ENABLED.get()));
 		EGG_PENDING.set(readBooleanSetting(properties, "toggle.egg_pending", EGG_PENDING.get()));
@@ -2505,6 +2730,7 @@ public class SalesClientMod implements ClientModInitializer {
 		properties.setProperty("blackmarket.click_count", Integer.toString(BLACKMARKET_CLICK_COUNT));
 		properties.setProperty("merchant.click_delay", Long.toString(MERCHANT_CLICK_DELAY_MS));
 		properties.setProperty("buffs.click_delay", Long.toString(BUFFS_CLICK_DELAY_MS));
+		properties.setProperty("museum.click_delay", Long.toString(MUSEUM_CLICK_DELAY_MS));
 		properties.setProperty("lobby.click_delay", Long.toString(LOBBY_CLICK_DELAY_MS));
 		properties.setProperty("auto_store.delay", Long.toString(AUTO_STORE_DELAY_MS));
 		properties.setProperty("boss.notify_delay", Long.toString(BOSS_NOTIFY_DELAY_MS));
@@ -2524,7 +2750,14 @@ public class SalesClientMod implements ClientModInitializer {
 		properties.setProperty("cookie.roll_delay", Long.toString(COOKIE_ROLL_DELAY_MS));
 		properties.setProperty("cookie.target", COOKIE_ROLL_TARGET.configKey);
 		properties.setProperty("ring_scrapper.click_delay", Long.toString(RING_SCRAPPER_CLICK_DELAY_MS));
+		properties.setProperty("delay.fishing_failsafe", Long.toString(FISHING_FAILSAFE_MS));
 		properties.setProperty("delay.lobby_repeat", Long.toString(LOBBY_FAILSAFE_REPEAT_MS));
+		properties.setProperty("museum.box_delay", Long.toString(MUSEUM_BOX_DELAY_MS));
+		properties.setProperty("museum.retry_delay", Long.toString(MUSEUM_RETRY_DELAY_MS));
+		properties.setProperty("museum.reopen_phase_delay", Long.toString(MUSEUM_REOPEN_PHASE_DELAY_MS));
+		properties.setProperty("museum.box_open_count", Integer.toString(MUSEUM_BOX_OPEN_COUNT));
+		properties.setProperty("museum.pv_number", Integer.toString(MUSEUM_PV_NUMBER));
+		properties.setProperty("museum.vault_command", MUSEUM_VAULT_COMMAND);
 
 		properties.setProperty("toggle.webhook", Boolean.toString(WEBHOOK_ENABLED.get()));
 		properties.setProperty("toggle.gemshop", Boolean.toString(GEMSHOP_ENABLED.get()));
@@ -2548,6 +2781,8 @@ public class SalesClientMod implements ClientModInitializer {
 		properties.setProperty("auto_daily.perks_last_run", AUTO_DAILY_PERKS_LAST_RUN);
 		properties.setProperty("auto_daily.freecredits_last_run", AUTO_DAILY_FREECREDITS_LAST_RUN);
 		properties.setProperty("auto_daily.keyall_last_run", AUTO_DAILY_KEYALL_LAST_RUN);
+		properties.setProperty("toggle.fishing", Boolean.toString(FISHING_ENABLED.get()));
+		properties.setProperty("toggle.museum", Boolean.toString(MUSEUM_ENABLED.get()));
 		properties.setProperty("toggle.egg", Boolean.toString(EGG_ENABLED.get()));
 		properties.setProperty("toggle.ring_scrapper", Boolean.toString(RING_SCRAPPER_ENABLED.get()));
 		properties.setProperty("toggle.egg_pending", Boolean.toString(EGG_PENDING.get()));
@@ -3090,7 +3325,7 @@ static TriggerActionMode getTriggerActionMode(AtomicBoolean enabled, AtomicBoole
 	}
 
 	private static String eggTypeList() {
-		return "default|desert|cactus|ice|hell|heavenly|brain-rot|dino|pumpkin|witch|robot|void|corrupt|dragon|alien|ai";
+		return "default|desert|cactus|ice|hell|heavenly|brain-rot|dino|pumpkin|witch|robot|void|corrupt|dragon";
 	}
 
 	private static EggType parseEggType(String rawEggType) {
@@ -3119,8 +3354,6 @@ static TriggerActionMode getTriggerActionMode(AtomicBoolean enabled, AtomicBoole
 			case "void" -> EggType.VOID;
 			case "corrupt" -> EggType.CORRUPT;
 			case "dragon", "dragonegg" -> EggType.DRAGON;
-			case "alien" -> EggType.ALIEN;
-			case "ai" -> EggType.AI;
 			default -> null;
 		};
 	}
@@ -6836,12 +7069,14 @@ static TriggerActionMode getTriggerActionMode(AtomicBoolean enabled, AtomicBoole
 	}
 
 	private static void runAutomationWorker() {
+		FishingAutomationState fishingState = new FishingAutomationState();
 		EggAutomationState eggState = new EggAutomationState();
 		AutomationMode lastMode = null;
 
 		while (!Thread.currentThread().isInterrupted()) {
 			AutomationMode mode = resolveEnabledAutomationMode();
 			if (mode != lastMode) {
+				fishingState.reset();
 				eggState.reset();
 				lastMode = mode;
 			}
@@ -6850,23 +7085,93 @@ static TriggerActionMode getTriggerActionMode(AtomicBoolean enabled, AtomicBoole
 				tickEggAutomation(eggState);
 				continue;
 			}
-
+			if (mode == AutomationMode.MUSEUM) {
+				tickMuseumAutomation();
+				continue;
+			}
 			if (mode == AutomationMode.RING_SCRAPPER) {
 				tickRingScrapperAutomation();
+				continue;
+			}
+			if (mode == AutomationMode.FISHING) {
+				tickFishingAutomation(fishingState);
 				continue;
 			}
 
 			sleepQuietly(BACKGROUND_IDLE_LOOP_DELAY_MS);
 		}
+	}
 
 	private static AutomationMode resolveEnabledAutomationMode() {
 		if (EGG_ENABLED.get()) {
 			return AutomationMode.EGG;
 		}
+		if (MUSEUM_ENABLED.get()) {
+			return AutomationMode.MUSEUM;
+		}
 		if (RING_SCRAPPER_ENABLED.get()) {
 			return AutomationMode.RING_SCRAPPER;
 		}
+		if (FISHING_ENABLED.get()) {
+			return AutomationMode.FISHING;
+		}
 		return null;
+	}
+
+	private static void tickFishingAutomation(FishingAutomationState state) {
+		boolean paused =
+			!hasAutomationAccess()
+				|| !AUTOMATION_ACTIVE.get()
+				|| !FISHING_ENABLED.get()
+				|| LOBBY_FAILSAFE_ACTIVE.get()
+				|| isEventRoutineBusy();
+		if (paused) {
+			if (isEventRoutineBusy()) {
+				state.pausedByEvent = true;
+			}
+			sleepQuietly(BACKGROUND_IDLE_LOOP_DELAY_MS);
+			return;
+		}
+
+		if (state.pausedByEvent) {
+			// Restart from a clean cast after any queued/active event routine finished.
+			state.rodIsCast = false;
+			state.lastCastTimestamp = 0L;
+			state.pausedByEvent = false;
+		}
+
+		boolean hasBobber = hasFishingBobber();
+		if (!state.rodIsCast) {
+			if (hasBobber) {
+				state.rodIsCast = true;
+				state.lastCastTimestamp = System.currentTimeMillis();
+			} else if (useHotbarItem(FISHING_HOTBAR_SLOT)) {
+				state.rodIsCast = true;
+				state.lastCastTimestamp = System.currentTimeMillis();
+				sleepQuietly(FISHING_RECAST_DELAY_MS);
+			}
+			sleepQuietly(BACKGROUND_LOOP_DELAY_MS);
+			return;
+		}
+
+		if (!hasBobber) {
+			if (useHotbarItem(FISHING_HOTBAR_SLOT)) {
+				state.lastCastTimestamp = System.currentTimeMillis();
+				sleepQuietly(FISHING_RECAST_DELAY_MS);
+			}
+			sleepQuietly(BACKGROUND_LOOP_DELAY_MS);
+			return;
+		}
+
+		long now = System.currentTimeMillis();
+		if (now - state.lastCastTimestamp > FISHING_FAILSAFE_MS) {
+			if (useHotbarItem(FISHING_HOTBAR_SLOT) && sleepQuietly(FISHING_RECAST_DELAY_MS)) {
+				useHotbarItem(FISHING_HOTBAR_SLOT);
+				state.lastCastTimestamp = System.currentTimeMillis();
+			}
+		}
+
+		sleepQuietly(BACKGROUND_LOOP_DELAY_MS);
 	}
 
 	private static void tickEggAutomation(EggAutomationState state) {
@@ -6948,6 +7253,18 @@ static TriggerActionMode getTriggerActionMode(AtomicBoolean enabled, AtomicBoole
 		}
 
 		sleepQuietly(EGG_RETRY_DELAY_MS);
+	}
+
+	private static void tickMuseumAutomation() {
+		if (shouldPauseMuseumAutomation()) {
+			sleepQuietly(BACKGROUND_IDLE_LOOP_DELAY_MS);
+			return;
+		}
+
+		boolean completed = runMuseumCycle();
+		if (!completed) {
+			sleepQuietly(MUSEUM_RETRY_DELAY_MS);
+		}
 	}
 
 	private static void tickRingScrapperAutomation() {
@@ -7092,6 +7409,14 @@ static TriggerActionMode getTriggerActionMode(AtomicBoolean enabled, AtomicBoole
 			&& !stackNameOrBlobContains(stack, "ring scrapper");
 	}
 
+	// Runs a pause/resume fishing loop that recasts when the bobber disappears.
+	private static void runFishingWorker() {
+		FishingAutomationState state = new FishingAutomationState();
+		while (!Thread.currentThread().isInterrupted()) {
+			tickFishingAutomation(state);
+		}
+	}
+
 	// Runs the egg routine and restarts it if another event interrupted the flow.
 	private static void runEggWorker() {
 		EggAutomationState state = new EggAutomationState();
@@ -7119,11 +7444,11 @@ static TriggerActionMode getTriggerActionMode(AtomicBoolean enabled, AtomicBoole
 			return false;
 		}
 
-int page = eggType.page;
-	for (int pageIndex = 2; pageIndex <= page; pageIndex++) {
-		if (!clickSingleSlot(EGG_NEXT_PAGE_SLOT, EGG_CLICK_DELAY_MS, "egg next page", true)) {
-			return false;
-		}
+		if (eggType.secondPage) {
+			if (!clickSingleSlot(EGG_NEXT_PAGE_SLOT, EGG_CLICK_DELAY_MS, "egg next page", true)) {
+				return false;
+			}
+			// Give the GUI enough time to render the second page before selecting the egg.
 			if (!sleepQuietly(EGG_PAGE_SWITCH_DELAY_MS)) {
 				return false;
 			}
@@ -7209,6 +7534,497 @@ int page = eggType.page;
 		sendClientFeedback("Egg GUI did not open. Retrying routine.");
 		return false;
 	}
+
+	// Runs the Museum / Tinker automation loop while the mode is enabled.
+	private static void runMuseumWorker() {
+		while (!Thread.currentThread().isInterrupted()) {
+			tickMuseumAutomation();
+		}
+	}
+
+	private static boolean shouldPauseMuseumAutomation() {
+		return !hasAutomationAccess()
+			|| !AUTOMATION_ACTIVE.get()
+			|| !MUSEUM_ENABLED.get()
+			|| LOBBY_FAILSAFE_ACTIVE.get()
+			|| isEventRoutineBusy();
+	}
+
+	private static boolean runMuseumCycle() {
+		if (shouldPauseMuseumAutomation()) {
+			return false;
+		}
+
+		if (hasItemInPlayerInventory(Items.PRISMARINE_SHARD)) {
+			// If crystals are already in inventory, process them first and skip pulling new boxes.
+			return runTinkerMuseumFlow();
+		}
+
+		if (!hasItemInPlayerInventory(Items.ENDER_CHEST)) {
+			if (!openMuseumVaultAndPullBoxes()) {
+				return false;
+			}
+		}
+
+		if (!hasItemInPlayerInventory(Items.ENDER_CHEST)) {
+			sendClientFeedback("Museum: no crystal boxes found (Ender Chests).");
+			return false;
+		}
+
+		if (!openCrystalBoxesFromHotbar()) {
+			return false;
+		}
+
+		return runTinkerMuseumFlow();
+	}
+
+	private static boolean openMuseumVaultAndPullBoxes() {
+		String command = MUSEUM_VAULT_COMMAND + " " + MUSEUM_PV_NUMBER;
+		if (!openContainerWithCommand(command, 6, "museum vault")) {
+			return false;
+		}
+
+		int targetHotbarSlot = findOrReserveMuseumBoxHotbarSlot();
+		if (targetHotbarSlot < 0) {
+			closeCurrentHandledScreen();
+			sendClientFeedback("Museum: no free hotbar slot for boxes (use slots 3-6).");
+			return false;
+		}
+
+		boolean moved;
+		try {
+			moved = pullCrystalBoxesFromVault(6, targetHotbarSlot, "museum boxes");
+		} finally {
+			closeCurrentHandledScreen();
+		}
+
+		if (!moved) {
+			sendClientFeedback("Museum: no Ender Chest stack found in /" + command + ".");
+			return false;
+		}
+		return sleepQuietly(MUSEUM_CLICK_DELAY_MS);
+	}
+
+	private static boolean pullCrystalBoxesFromVault(int expectedRows, int hotbarSlot, String routineName) {
+		Integer sourceContainerSlot = findContainerItemSlotInOpenScreen(expectedRows, Items.ENDER_CHEST);
+		if (sourceContainerSlot == null) {
+			sendClientFeedback("Museum: no Ender Chest stack found in vault.");
+			return false;
+		}
+
+		// Method 1: QUICK_MOVE (shift-click) from container to player inventory.
+		if (!clickAnySlot(
+			sourceContainerSlot,
+			0,
+			SlotActionType.QUICK_MOVE,
+			MUSEUM_CLICK_DELAY_MS,
+			routineName + " quick-move",
+			false
+		)) {
+			return false;
+		}
+		if (!sleepQuietly(MUSEUM_CLICK_DELAY_MS)) {
+			return false;
+		}
+		if (findMuseumBoxHotbarSlotForUse() >= 0) {
+			return true;
+		}
+
+		// Method 2: If boxes landed in main inventory, swap one stack into the requested hotbar slot.
+		Integer sourcePlayerSlot = findPlayerItemSlotInOpenScreen(expectedRows, Items.ENDER_CHEST);
+		if (sourcePlayerSlot == null) {
+			sendClientFeedback("Museum: Ender Chest was not moved into player inventory.");
+			return false;
+		}
+
+		if (!clickAnySlot(
+			sourcePlayerSlot,
+			hotbarSlot,
+			SlotActionType.SWAP,
+			MUSEUM_CLICK_DELAY_MS,
+			routineName + " hotbar-swap",
+			false
+		)) {
+			return false;
+		}
+		if (!sleepQuietly(MUSEUM_CLICK_DELAY_MS)) {
+			return false;
+		}
+
+		if (findMuseumBoxHotbarSlotForUse() < 0) {
+			sendClientFeedback("Museum: could not place Ender Chest into hotbar slot " + hotbarSlot + ".");
+			return false;
+		}
+		return true;
+	}
+
+	private static boolean openCrystalBoxesFromHotbar() {
+		int hotbarSlot = findMuseumBoxHotbarSlotForUse();
+		if (hotbarSlot < 0) {
+			sendClientFeedback("Museum: no Ender Chest in hotbar, continuing to next step.");
+			return true;
+		}
+
+		int opened = 0;
+		for (int i = 0; i < MUSEUM_BOX_OPEN_COUNT; i++) {
+			if (shouldPauseMuseumAutomation()) {
+				return false;
+			}
+			if (!hasFreePlayerInventorySlot()) {
+				break;
+			}
+			hotbarSlot = findMuseumBoxHotbarSlotForUse();
+			if (hotbarSlot < 0) {
+				sendClientFeedback("Museum: no more Ender Chests in hotbar, continuing to next step.");
+				break;
+			}
+			if (!useHotbarItem(hotbarSlot)) {
+				sendClientFeedback("Museum: failed to open crystal box (" + (i + 1) + "), continuing.");
+				break;
+			}
+			opened++;
+			if (!sleepQuietly(MUSEUM_BOX_DELAY_MS)) {
+				return false;
+			}
+		}
+
+		if (opened == 0 && !hasItemInPlayerInventory(Items.PRISMARINE_SHARD)) {
+			sendClientFeedback("Museum: no crystal boxes opened, continuing to next step.");
+		}
+		return true;
+	}
+
+	private static boolean runTinkerMuseumFlow() {
+		if (shouldPauseMuseumAutomation()) {
+			return false;
+		}
+
+		try {
+			// Phase 1: open museum and place eligible crystals.
+			if (!useHotbarItem(MUSEUM_HOTBAR_SLOT)) {
+				sendClientFeedback("Museum: failed to open tinker item on hotbar slot 0.");
+				return false;
+			}
+			if (!sleepQuietly(MUSEUM_BOX_DELAY_MS)) {
+				return false;
+			}
+			if (!waitForContainerRowsInterruptible(6, GUI_OPEN_TIMEOUT_MS)) {
+				sendClientFeedback("Museum: expected 9x6 tinker GUI.");
+				return false;
+			}
+			if (!clickSingleSlot(TINKER_ENTRY_SLOT, MUSEUM_CLICK_DELAY_MS, "museum enter tinker")) {
+				return false;
+			}
+			if (!waitForContainerRowsInterruptible(4, GUI_OPEN_TIMEOUT_MS)) {
+				sendClientFeedback("Museum: expected 9x4 tinker menu.");
+				return false;
+			}
+			if (!clickSingleSlot(TINKER_OPEN_MUSEUM_SLOT, MUSEUM_CLICK_DELAY_MS, "museum open museum")) {
+				return false;
+			}
+			if (!waitForContainerRowsInterruptible(4, GUI_OPEN_TIMEOUT_MS)) {
+				sendClientFeedback("Museum: expected 9x4 museum GUI.");
+				return false;
+			}
+
+			int movedCrystals = 0;
+			int stuckFailures = 0;
+			int lastFailedPlayerSlot = -1;
+			while (true) {
+				if (shouldPauseMuseumAutomation()) {
+					return false;
+				}
+
+				List<MuseumTransferPlan> plans = collectMuseumTransferPlans();
+				if (plans.isEmpty()) {
+					if (movedCrystals == 0 && hasItemInPlayerInventory(Items.PRISMARINE_SHARD)) {
+						sendClientFeedback("Museum: no eligible crystals found (type/booster parse or below minimum).");
+					}
+					break;
+				}
+
+				MuseumTransferPlan plan = plans.get(0);
+				if (!moveSlotToSlot(plan.playerSlot, plan.museumSlot, MUSEUM_CLICK_DELAY_MS, "museum transfer")) {
+					sendClientFeedback("Museum: skipped one crystal transfer.");
+					if (lastFailedPlayerSlot == plan.playerSlot) {
+						stuckFailures++;
+					} else {
+						lastFailedPlayerSlot = plan.playerSlot;
+						stuckFailures = 1;
+					}
+					if (stuckFailures >= 3) {
+						sendClientFeedback("Museum: transfer stuck on one crystal, continuing with next steps.");
+						break;
+					}
+					continue;
+				}
+
+				movedCrystals++;
+				stuckFailures = 0;
+				lastFailedPlayerSlot = -1;
+			}
+
+			// User-requested flow: close after museum phase and reopen from hotbar slot 0.
+			closeCurrentHandledScreen();
+			if (!waitUntilNoHandledScreen(GUI_OPEN_TIMEOUT_MS)) {
+				sendClientFeedback("Museum: GUI did not close cleanly before phase 2.");
+				return false;
+			}
+			if (!sleepQuietly(MUSEUM_REOPEN_PHASE_DELAY_MS)) {
+				return false;
+			}
+			if (shouldPauseMuseumAutomation()) {
+				return false;
+			}
+
+			// Phase 2: reopen tinker flow and open storage GUI.
+			if (!openTinkerForMuseumPhaseTwo()) {
+				return false;
+			}
+			if (!clickSingleSlot(TINKER_ENTRY_SLOT, MUSEUM_CLICK_DELAY_MS, "museum re-enter tinker")) {
+				return false;
+			}
+			if (!waitForContainerRowsInterruptible(4, GUI_OPEN_TIMEOUT_MS)) {
+				sendClientFeedback("Museum: expected 9x4 tinker menu (phase 2).");
+				return false;
+			}
+			if (!clickSingleSlot(TINKER_OPEN_STORAGE_SLOT, MUSEUM_CLICK_DELAY_MS, "museum open storage")) {
+				return false;
+			}
+			if (!waitForContainerRowsInterruptible(6, GUI_OPEN_TIMEOUT_MS)) {
+				sendClientFeedback("Museum: expected 9x6 crystal storage.");
+				return false;
+			}
+
+			// Insert only crystals below threshold. Keep eligible (above-threshold) crystals in inventory.
+			if (!quickMovePlayerItemsMatching(
+				6,
+				stack -> stack.isOf(Items.PRISMARINE_SHARD) && !isCrystalEligibleForMuseum(stack),
+				"museum move leftovers",
+				MUSEUM_CLICK_DELAY_MS
+			)) {
+				return false;
+			}
+
+			if (!clickSingleSlot(TINKER_CONFIRM_STORAGE_SLOT, MUSEUM_CLICK_DELAY_MS, "museum storage confirm")) {
+				return false;
+			}
+			if (!sleepQuietly(1000L)) {
+				return false;
+			}
+			return true;
+		} finally {
+			closeCurrentHandledScreen();
+		}
+	}
+
+	private static boolean openTinkerForMuseumPhaseTwo() {
+		for (int attempt = 1; attempt <= MUSEUM_PHASE2_OPEN_ATTEMPTS; attempt++) {
+			if (shouldPauseMuseumAutomation()) {
+				return false;
+			}
+
+			closeCurrentHandledScreen();
+			if (!waitUntilNoHandledScreen(GUI_OPEN_TIMEOUT_MS)) {
+				if (attempt >= MUSEUM_PHASE2_OPEN_ATTEMPTS) {
+					sendClientFeedback("Museum: GUI did not close before phase 2 retry.");
+					return false;
+				}
+				if (!sleepQuietly(MUSEUM_RETRY_DELAY_MS)) {
+					return false;
+				}
+				continue;
+			}
+
+			if (!sleepQuietly(MUSEUM_REOPEN_PHASE_DELAY_MS)) {
+				return false;
+			}
+			if (!useHotbarItem(MUSEUM_HOTBAR_SLOT)) {
+				if (attempt >= MUSEUM_PHASE2_OPEN_ATTEMPTS) {
+					sendClientFeedback("Museum: failed to reopen tinker item on hotbar slot 0.");
+					return false;
+				}
+				if (!sleepQuietly(MUSEUM_RETRY_DELAY_MS)) {
+					return false;
+				}
+				continue;
+			}
+			if (!sleepQuietly(MUSEUM_BOX_DELAY_MS)) {
+				return false;
+			}
+			if (waitForContainerRowsInterruptible(6, GUI_OPEN_TIMEOUT_MS)) {
+				return true;
+			}
+			if (attempt >= MUSEUM_PHASE2_OPEN_ATTEMPTS) {
+				sendClientFeedback("Museum: expected 9x6 tinker GUI (phase 2).");
+				return false;
+			}
+			if (!sleepQuietly(MUSEUM_RETRY_DELAY_MS)) {
+				return false;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isCrystalEligibleForMuseum(ItemStack stack) {
+		CrystalParseResult parseResult = parseCrystalStack(stack);
+		if (parseResult.type == null) {
+			return false;
+		}
+		return parseResult.booster >= getConfiguredBoosterMin(parseResult.type);
+	}
+
+	private static List<MuseumTransferPlan> collectMuseumTransferPlans() {
+		return callOnClientThread(() -> {
+			List<MuseumTransferPlan> plans = new ArrayList<>();
+			MinecraftClient client = MinecraftClient.getInstance();
+			ScreenHandler handler = getActiveHandledScreenHandler(client);
+			if (handler == null) {
+				return plans;
+			}
+			int rows = getContainerRows(handler);
+			if (rows != 4) {
+				return plans;
+			}
+
+			int topSlots = rows * CONTAINER_COLUMNS;
+			int max = Math.min(handler.slots.size(), topSlots + PLAYER_INVENTORY_SLOTS);
+			for (int slot = topSlots; slot < max; slot++) {
+				ItemStack stack = handler.getSlot(slot).getStack();
+				if (!stack.isOf(Items.PRISMARINE_SHARD) || stack.isEmpty()) {
+					continue;
+				}
+
+				CrystalParseResult parseResult = parseCrystalStack(stack);
+				if (parseResult.type == null) {
+					continue;
+				}
+
+				if (parseResult.booster < getConfiguredBoosterMin(parseResult.type)) {
+					continue;
+				}
+
+				plans.add(new MuseumTransferPlan(slot, parseResult.type.museumSlot));
+			}
+			return plans;
+		}, List.of());
+	}
+
+	private static int getConfiguredBoosterMin(CrystalType type) {
+		return switch (type) {
+			case COMMON -> DEFAULT_COMMON_MIN_BOOSTER;
+			case RARE -> DEFAULT_RARE_MIN_BOOSTER;
+			case EPIC -> DEFAULT_EPIC_MIN_BOOSTER;
+			case LEGENDARY -> DEFAULT_LEGENDARY_MIN_BOOSTER;
+			case MYTHIC -> DEFAULT_MYTHIC_MIN_BOOSTER;
+			case GOTHIC -> DEFAULT_GOTHIC_MIN_BOOSTER;
+		};
+	}
+
+	private static CrystalType detectCrystalType(ItemStack stack) {
+		return parseCrystalStack(stack).type;
+	}
+
+	private static CrystalType parseCrystalTypeToken(String rawToken) {
+		if (rawToken == null || rawToken.isBlank()) {
+			return null;
+		}
+		return switch (rawToken.trim().toLowerCase(Locale.ROOT)) {
+			case "common" -> CrystalType.COMMON;
+			case "rare" -> CrystalType.RARE;
+			case "epic" -> CrystalType.EPIC;
+			case "legendary" -> CrystalType.LEGENDARY;
+			case "mythic" -> CrystalType.MYTHIC;
+			case "gothic" -> CrystalType.GOTHIC;
+			default -> null;
+		};
+	}
+
+	private static double extractBoosterPercent(ItemStack stack) {
+		return parseCrystalStack(stack).booster;
+	}
+
+	private static CrystalParseResult parseCrystalStack(ItemStack stack) {
+		if (stack == null || stack.isEmpty()) {
+			return CrystalParseResult.EMPTY;
+		}
+
+		String cacheKey = buildCrystalCacheKey(stack);
+		CrystalParseResult cached = CRYSTAL_PARSE_CACHE.get(cacheKey);
+		if (cached != null) {
+			return cached;
+		}
+
+		CrystalParseResult parsed = parseCrystalStackUncached(stack);
+		if (CRYSTAL_PARSE_CACHE.size() >= CRYSTAL_PARSE_CACHE_LIMIT) {
+			CRYSTAL_PARSE_CACHE.clear();
+		}
+		CRYSTAL_PARSE_CACHE.put(cacheKey, parsed);
+		return parsed;
+	}
+
+	private static CrystalParseResult parseCrystalStackUncached(ItemStack stack) {
+		String fastBlob = buildStackFastParseBlob(stack);
+		CrystalType type = parseCrystalTypeFromBlob(fastBlob);
+		double booster = parseBoosterFromBlob(fastBlob);
+
+		if (type != null && booster >= 0D) {
+			return new CrystalParseResult(type, booster);
+		}
+
+		String tooltipBlob = buildStackParseBlob(stack);
+		if (type == null) {
+			type = parseCrystalTypeFromBlob(tooltipBlob);
+		}
+		if (booster < 0D) {
+			booster = parseBoosterFromBlob(tooltipBlob);
+		}
+
+		return new CrystalParseResult(type, booster);
+	}
+
+	private static String buildCrystalCacheKey(ItemStack stack) {
+		return stack.getItem() + "|" + stack.getName().getString() + "|" + stack.getComponents();
+	}
+
+	private static CrystalType parseCrystalTypeFromBlob(String blob) {
+		Matcher typeLineMatcher = CRYSTAL_TYPE_LINE_PATTERN.matcher(blob);
+		if (typeLineMatcher.find()) {
+			CrystalType parsed = parseCrystalTypeToken(typeLineMatcher.group(1));
+			if (parsed != null) {
+				return parsed;
+			}
+		}
+
+		Matcher fromCrystalMatcher = FROM_CRYSTAL_TYPE_PATTERN.matcher(blob);
+		if (fromCrystalMatcher.find()) {
+			CrystalType parsed = parseCrystalTypeToken(fromCrystalMatcher.group(1));
+			if (parsed != null) {
+				return parsed;
+			}
+		}
+
+		String normalizedBlob = blob.toLowerCase(Locale.ROOT);
+		for (CrystalType type : CrystalType.values()) {
+			if (type.matcher.matcher(normalizedBlob).find()) {
+				return type;
+			}
+		}
+		return null;
+	}
+
+	private static double parseBoosterFromBlob(String blob) {
+		Matcher matcher = BOOSTER_PERCENT_PATTERN.matcher(blob);
+		if (!matcher.find()) {
+			return -1D;
+		}
+		try {
+			return Double.parseDouble(matcher.group(1));
+		} catch (Exception exception) {
+			return -1D;
+		}
+	}
+
 	private static String buildStackFastParseBlob(ItemStack stack) {
 		StringBuilder builder = new StringBuilder();
 		builder.append(stack.getName().getString()).append('\n');
@@ -7321,6 +8137,29 @@ int page = eggType.page;
 		}, null);
 	}
 
+	private static boolean moveSlotToSlot(int fromSlot, int toSlot, long delayMs, String routineName) {
+		if (!clickAnySlot(fromSlot, 0, SlotActionType.PICKUP, delayMs, routineName, false)) {
+			return false;
+		}
+		// Crystals are single items on this server. One target click should consume the carried crystal.
+		if (!clickAnySlot(toSlot, 0, SlotActionType.PICKUP, delayMs, routineName, false)) {
+			return false;
+		}
+
+		int cursorCount = getCursorStackCount();
+		if (cursorCount == 0) {
+			return true;
+		}
+		if (cursorCount < 0) {
+			return false;
+		}
+
+		sendClientFeedback("Museum transfer did not consume crystal on slot " + toSlot + ".");
+		// Best effort: place the remaining stack back to source to avoid blocking next GUI clicks.
+		clickAnySlot(fromSlot, 0, SlotActionType.PICKUP, delayMs, routineName, true);
+		return false;
+	}
+
 	private static int getCursorStackCount() {
 		return callOnClientThread(() -> {
 			MinecraftClient client = MinecraftClient.getInstance();
@@ -7378,7 +8217,53 @@ int page = eggType.page;
 		}, -1);
 	}
 
+	private static int findOrReserveMuseumBoxHotbarSlot() {
+		return callOnClientThread(() -> {
+			MinecraftClient client = MinecraftClient.getInstance();
+			if (client.player == null) {
+				return -1;
+			}
 
+			// Reuse an existing Ender Chest slot in the preferred range first.
+			for (int slot : MUSEUM_BOX_HOTBAR_PREFERRED_SLOTS) {
+				if (client.player.getInventory().getStack(slot).isOf(Items.ENDER_CHEST)) {
+					return slot;
+				}
+			}
+
+			// Otherwise only use empty preferred slots (3-6), never 0/1/2/7/8.
+			for (int slot : MUSEUM_BOX_HOTBAR_PREFERRED_SLOTS) {
+				if (client.player.getInventory().getStack(slot).isEmpty()) {
+					return slot;
+				}
+			}
+
+			return -1;
+		}, -1);
+	}
+
+	private static int findMuseumBoxHotbarSlotForUse() {
+		return callOnClientThread(() -> {
+			MinecraftClient client = MinecraftClient.getInstance();
+			if (client.player == null) {
+				return -1;
+			}
+
+			for (int slot : MUSEUM_BOX_HOTBAR_PREFERRED_SLOTS) {
+				if (client.player.getInventory().getStack(slot).isOf(Items.ENDER_CHEST)) {
+					return slot;
+				}
+			}
+
+			// Fallback for legacy states where boxes might already be on another slot.
+			for (int slot = 0; slot < 9; slot++) {
+				if (client.player.getInventory().getStack(slot).isOf(Items.ENDER_CHEST)) {
+					return slot;
+				}
+			}
+			return -1;
+		}, -1);
+	}
 
 	private static boolean useHotbarItemOnBlock(int hotbarSlot) {
 		return callOnClientThread(() -> {
@@ -7404,6 +8289,9 @@ int page = eggType.page;
 		return CACHED_OPEN_CONTAINER_ROWS.get() == 6;
 	}
 
+	private static boolean hasFishingBobber() {
+		return CACHED_HAS_FISHING_BOBBER.get();
+	}
 
 	private static boolean useHotbarItem(int hotbarSlot) {
 		return callOnClientThread(() -> {
@@ -7538,6 +8426,9 @@ int page = eggType.page;
 	private static boolean waitUntilNoHandledScreen(long timeoutMs) {
 		long deadline = System.currentTimeMillis() + timeoutMs;
 		while (System.currentTimeMillis() < deadline) {
+			if (shouldPauseMuseumAutomation()) {
+				return false;
+			}
 			if (!CACHED_IS_HANDLED_SCREEN.get()) {
 				return true;
 			}
@@ -7849,6 +8740,44 @@ int page = eggType.page;
 	}
 	// UI screens are defined in SalesDashboardScreen.java
 
+	private static final class MuseumTransferPlan {
+		private final int playerSlot;
+		private final int museumSlot;
+
+		private MuseumTransferPlan(int playerSlot, int museumSlot) {
+			this.playerSlot = playerSlot;
+			this.museumSlot = museumSlot;
+		}
+	}
+
+	private static final class CrystalParseResult {
+		private static final CrystalParseResult EMPTY = new CrystalParseResult(null, -1D);
+
+		private final CrystalType type;
+		private final double booster;
+
+		private CrystalParseResult(CrystalType type, double booster) {
+			this.type = type;
+			this.booster = booster;
+		}
+	}
+
+	private enum CrystalType {
+		COMMON("common", 2),
+		RARE("rare", 3),
+		EPIC("epic", 4),
+		LEGENDARY("legendary", 5),
+		MYTHIC("mythic", 6),
+		GOTHIC("gothic", 11);
+
+		private final Pattern matcher;
+		private final int museumSlot;
+
+		CrystalType(String keyword, int museumSlot) {
+			this.matcher = Pattern.compile("\\b" + Pattern.quote(keyword) + "\\b", Pattern.CASE_INSENSITIVE);
+			this.museumSlot = museumSlot;
+		}
+	}
 
 }
 
